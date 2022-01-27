@@ -7,73 +7,94 @@ import android.app.Dialog;
 import android.content.SharedPreferences;
 import android.view.View;
 import android.view.Window;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.e_sports_app.R;
+import com.example.e_sports_app.data.Player;
+import com.example.e_sports_app.data.Team;
+import com.example.e_sports_app.helpers.DbHelper;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 public class ViewDialog {
-FirebaseFirestore db;
-    public void showDialog(Activity activity, String title, String author, String isbn, String category, String url,String id){
+        FirebaseFirestore db;
+    public void showAddTeamDialog(Activity activity){
         final Dialog dialog = new Dialog(activity);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setCancelable(false);
-        dialog.setContentView(R.layout.custom_dialog_one);
-        ImageView imageView=dialog.findViewById(R.id.imageBook);
-        TextView bookTitle =  dialog.findViewById(R.id.bookTitle);
-        TextView bookAuthor =  dialog.findViewById(R.id.bookAuthor);
-        TextView bookIsbn =  dialog.findViewById(R.id.bookIsbn);
-        TextView bookCategory =  dialog.findViewById(R.id.bookCategory);
-        TextView txt_info=dialog.findViewById(R.id.txt_info);
-        ImageView cancel_btn=dialog.findViewById(R.id.cancel_button);
-        Button borrow_btn = dialog.findViewById(R.id.borrow_btn);
-//        Picasso.get().load(url).into(imageView);
-        bookTitle.setText(title);
-        bookAuthor.setText(author);
-        bookCategory.setText(category);
-        bookIsbn.setText(isbn);
+        dialog.setContentView(R.layout.dialog_add_team);
+        db=FirebaseFirestore.getInstance();
 
+        DbHelper helper = new DbHelper(activity);
+        EditText title,description;
+        title = dialog.findViewById(R.id.team_name);
+        description = dialog.findViewById(R.id.team_description);
+        Button add_team;
+        add_team =dialog.findViewById(R.id.team_add_btn);
+        add_team.setOnClickListener(v->{
 
-        SharedPreferences pref = activity.getSharedPreferences("user", MODE_PRIVATE);
-        String username = pref.getString("email", "");
-db=FirebaseFirestore.getInstance();
-db.collection("users").document(username).collection("borrowed")
-        .document(id).get().addOnCompleteListener(task -> {
-    DocumentSnapshot document=task.getResult();
-    if(document.exists()){
-        borrow_btn.setVisibility(View.INVISIBLE);
-        txt_info.setVisibility(View.VISIBLE);
-    }
+            Team team = new Team("",title.getText().toString(),description.getText().toString());
+            helper.addTeam(team);
+            dialog.dismiss();
         });
 
+        dialog.setCancelable(true);
+        dialog.show();
+    }
+    public void showFaq(Activity activity,String id){
+        final Dialog dialog = new Dialog(activity);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_list_faq);
+        db=FirebaseFirestore.getInstance();
+        TextView title,description;
+        title = dialog.findViewById(R.id.faq_question);
+        description = dialog.findViewById(R.id.faq_description);
 
+        db.collection("faq").document(id).get().addOnSuccessListener(result->{
+           if (result.exists())
+           {
+               title.setText(result.getString("title"));
+               description.setText(result.getString("description"));
+           }
+        });
+     dialog.setCancelable(true);
+        dialog.show();
+    }
 
-        borrow_btn.setOnClickListener(v ->
+    public void showResultsDialog(Activity activity,String game_id){
+        final Dialog dialog = new Dialog(activity);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_game_results);
+        db=FirebaseFirestore.getInstance();
+        TextView team_one,team_two;
+        team_one = dialog.findViewById(R.id.tv_team_one);
+        team_two = dialog.findViewById(R.id.tv_team_two);
+        EditText result_one = dialog.findViewById(R.id.result_team_1);
+        EditText result_two = dialog.findViewById(R.id.result_team_2);
+
+        Button add_results = dialog.findViewById(R.id.add_results_btn);
+        db.collection("games").document(game_id).get().addOnSuccessListener(result->{
+            if (result.exists())
+            {
+                team_one.setText(result.getString("team1_name"));
+                team_two.setText(result.getString("team2_name"));
+                result_one.setText(result.getString("score_team1"));
+                result_two.setText(result.getString("score_team_2"));
+            }
+        });
+
+        add_results.setOnClickListener(vv->
                 {
-                    Borrow borrow=new Borrow(title,url,isbn,id);
-                    db.collection("users")
-                            .document(username)
-                            .collection("borrowed")
-                            .document(id)
-                            .set(borrow)
-                            .addOnSuccessListener(aVoid -> {
-                                Toast.makeText(activity, "Book Successfully Borrowed", Toast.LENGTH_SHORT).show();
-                                db.collection("users")
-                                        .document(username).update("noOfBooks", FieldValue.increment(1));
-                                borrow_btn.setVisibility(View.INVISIBLE);
-                                txt_info.setVisibility(View.VISIBLE);
-                            })
-                            .addOnFailureListener(e -> {
-
-                            });
+                    DbHelper helper = new DbHelper(activity);
+                    helper.updateResults(result_one.getText().toString(),result_two.getText().toString(),game_id);
                 }
-        );
-        cancel_btn.setOnClickListener(v->dialog.dismiss());
+                );
         dialog.setCancelable(true);
         dialog.show();
     }
